@@ -1,0 +1,9 @@
+[submodule "examples/apidemo/deps/CWin32MIDI"]
+	path = examples/apidemo/deps/CWin32MIDI
+	url = https://github.com/dewf/CWin32MIDI.git
+[submodule "examples/apidemo/deps/CASIOClient"]
+	path = examples/apidemo/deps/CASIOClient
+	url = https://github.com/dewf/CASIOClient.git
+[submodule "examples/apidemo/deps/openwl"]
+	path = examples/apidemo/deps/openwl
+	url = https://github.com/dewf/openwl.git
