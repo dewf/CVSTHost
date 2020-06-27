@@ -191,6 +191,10 @@ VstIntPtr VSTCALLBACK hostCallback(AEffect* effect, VstInt32 opcode, VstInt32 in
             //}
             break;
         }
+        case audioMasterCanDo: {
+            logFormat("audioMasterCanDo [%s]?", (const char*)ptr);
+            return 0; // for now, until we handle these individually
+        }
         default:
             logFormat("unhandled vst host opcode (with plugin): %d", opcode);
         }
