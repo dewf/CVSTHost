@@ -12,6 +12,13 @@
 #define ASIO_DEVICE_NAME "Traktor Audio 2 MK2"
 #define MIDI_DEVICE_NAME "Impact LX25+" // 2- UA-4FX" //"MIDIIN2 (padKONTROL)"
 
+enum ActionIDs {
+    ID_LoadAction = 1,
+    ID_SaveAction,
+    ID_ASIOConfig,
+    ID_Quit
+};
+
 static wl_WindowRef editorWindow = nullptr;
 static CASIO_Device asioDevice = nullptr;
 static CASIO_DeviceProperties asioProps;
@@ -26,6 +33,85 @@ static float **vstOutputs;
 
 static CWin32Midi_Device midiDevice;
 
+static const unsigned int MAGIC = 'XV3X';
+
+static wl_FileDialogOpts::FilterSpec filterSpecs[] = {
+    { "VST Program", "*.vstprog" }
+};
+static int numFilters = sizeof(filterSpecs) / sizeof(wl_FileDialogOpts::FilterSpec);
+
+
+static void loadProgram() {
+    wl_FileDialogOpts opts;
+    opts.forWindow = editorWindow;
+    opts.mode = wl_FileDialogOpts::kModeFile;
+    opts.filters = filterSpecs;
+    opts.numFilters = numFilters;
+    opts.allowAll = false;
+    opts.defaultExt = "*.vstprog"; // ??
+    opts.allowMultiple = false;
+
+    wl_FileResults* results;
+    if (wl_FileOpenDialog(&opts, &results) && results->numResults == 1) {
+        printf("user loading from: [%s]\n", results->results[0]);
+        auto file = fopen(results->results[0], "rb");
+        if (file != nullptr) {
+            // total file size
+            fseek(file, 0, SEEK_END);
+            auto totalLength = ftell(file);
+            fseek(file, 0, SEEK_SET);
+            // check magic
+            unsigned int maybeMagic;
+            fread(&maybeMagic, sizeof(MAGIC), 1, file);
+            if (maybeMagic == MAGIC) {
+                auto dataLength = totalLength - ftell(file);
+                auto buffer = malloc(dataLength);
+                if (buffer) {
+                    fread(buffer, 1, dataLength, file);
+                    CVST_SetChunk(vstPlugin, CVST_ChunkType::ChunkType_Program, buffer, dataLength);
+                    printf("wrote program [%ld bytes]\n", dataLength);
+                    free(buffer);
+                }
+            }
+            else {
+                printf("magic value not found - wrong format?\n");
+            }
+            fclose(file);
+        }
+    }
+}
+
+static void saveProgram() {
+    wl_FileDialogOpts opts;
+    opts.forWindow = editorWindow;
+    opts.mode = wl_FileDialogOpts::kModeFile;
+    opts.filters = filterSpecs;
+    opts.numFilters = numFilters;
+    opts.allowAll = false;
+    opts.defaultExt = "*.vstprog"; // ??
+    opts.suggestedFilename = "program01.vstprog";
+
+    wl_FileResults* results;
+    if (wl_FileSaveDialog(&opts, &results) && results->numResults == 1) {
+        printf("user saved to: [%s]\n", results->results[0]);
+        void* data;
+        size_t length;
+        CVST_GetChunk(vstPlugin, CVST_ChunkType::ChunkType_Program, &data, &length);
+        if (length > 0) {
+            auto file = fopen(results->results[0], "wb");
+            if (file != nullptr) {
+                fwrite(&MAGIC, sizeof(MAGIC), 1, file);
+                fwrite(data, 1, length, file);
+                fclose(file);
+            }
+        }
+        else {
+            printf("CVST_GetChunk <= 0 !!");
+        }
+        wl_FileResultsFree(&results);
+    } // else canceled
+}
+
 int CDECL wlCallback(wl_WindowRef window, struct wl_Event *event, void *userData)
 {
     event->handled = true;
@@ -33,6 +119,28 @@ int CDECL wlCallback(wl_WindowRef window, struct wl_Event *event, void *userData
     case wl_EventType::wl_kEventTypeWindowDestroyed:
         if (window == editorWindow) {
             wl_ExitRunloop();
+        }
+        break;
+    case wl_EventType::wl_kEventTypeAction:
+        if (window == editorWindow) {
+            switch (event->actionEvent.id) {
+            case ID_ASIOConfig:
+                CASIO_ShowControlPanel(asioDevice);
+                break;
+            case ID_Quit:
+                wl_WindowDestroy(editorWindow); // runloop will take a moment to exit, so close ASAP
+                wl_ExitRunloop();
+                break;
+            case ID_SaveAction:
+                saveProgram();
+                break;
+            case ID_LoadAction:
+                loadProgram();
+                break;
+            default:
+                printf("unhandled action ID: %d\n", event->actionEvent.id);
+                // unknown action, do nothing
+            }
         }
         break;
     default:
@@ -222,6 +330,35 @@ int openMidiByName(const char *name) {
     return -1;
 }
 
+wl_MenuBarRef createMenu() {
+    auto fileMenu = wl_MenuCreate();
+
+    // load
+    auto loadAction = wl_ActionCreate(ID_LoadAction, "&Open...", nullptr, wl_AccelCreate(wl_kKeyO, wl_kModifierControl));
+    wl_MenuAddAction(fileMenu, loadAction);
+
+    // save
+    auto saveAction = wl_ActionCreate(ID_SaveAction, "&Save...", nullptr, wl_AccelCreate(wl_kKeyS, wl_kModifierControl));
+    wl_MenuAddAction(fileMenu, saveAction);
+
+    // separator
+    wl_MenuAddSeparator(fileMenu);
+
+    //// asio config
+    //auto asioConfigAction = wl_ActionCreate(ID_ASIOConfig, "ASIO...", nullptr, nullptr);
+    //wl_MenuAddAction(fileMenu, asioConfigAction);
+
+    //// separator
+    //wl_MenuAddSeparator(fileMenu);
+
+    // exit
+    auto exitAction = wl_ActionCreate(ID_Quit, "&Quit", nullptr, wl_AccelCreate(wl_kKeyQ, wl_kModifierControl));
+    wl_MenuAddAction(fileMenu, exitAction);
+
+    auto menuBar = wl_MenuBarCreate();
+    wl_MenuBarAddMenu(menuBar, "&File", fileMenu);
+    return menuBar;
+}
 
 int main()
 {
@@ -259,9 +396,11 @@ int main()
 
     // instantiate plugin
 #ifdef _WIN64
-    vstPlugin = CVST_LoadPlugin("C:\\Program Files\\Steinberg\\VSTPlugins\\dexed.dll", nullptr);
+    //vstPlugin = CVST_LoadPlugin("C:\\Program Files\\Steinberg\\VSTPlugins\\dexed.dll", nullptr);
+    vstPlugin = CVST_LoadPlugin("C:\\Program Files\\Steinberg\\VSTPlugins\\HALion Sonic\\HALion Sonic.dll", nullptr);
 #else
-    vstPlugin = CVST_LoadPlugin("C:\\Program Files (x86)\\Steinberg\\VSTPlugins\\dexed.dll", nullptr);
+    vstPlugin = CVST_LoadPlugin("C:\\Program Files (x86)\\Steinberg\\VSTPlugins\\TyrellN6.dll", nullptr);
+    //vstPlugin = CVST_LoadPlugin("C:\\Program Files (x86)\\Steinberg\\VSTPlugins\\dexed.dll", nullptr);
 #endif
     CVST_GetProperties(vstPlugin, &vstProps);
     CVST_SetBlockSize(vstPlugin, asioProps.bufferSampleLength);
@@ -274,6 +413,8 @@ int main()
     printf("editor size: %d,%d\n", width, height);
 
     editorWindow = wl_WindowCreate(width, height, "plugin editor", nullptr, nullptr);
+    auto menuBar = createMenu();
+    wl_WindowSetMenuBar(editorWindow, menuBar);
     wl_WindowShow(editorWindow);
     CVST_OpenEditor(vstPlugin, wl_WindowGetOSHandle(editorWindow));
 

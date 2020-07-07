@@ -360,3 +360,16 @@ CVSTHOST_API void CDECL CVST_GetProperties(CVST_Plugin plugin, CVST_Properties *
     props->numOutputs = plugin->getNumOutputs();
     props->isInstrument = plugin->isInstrument; // set on plugin load, so not a function
 }
+
+CVSTHOST_API void CDECL CVST_GetChunk(CVST_Plugin plugin, enum CVST_ChunkType chunkType, void** data, size_t* length)
+{
+    VstInt32 index = chunkType == ChunkType_Bank ? 0 : 1;
+    *length = plugin->dispatcher(effGetChunk, index, 0, data, 0.0f);
+    // will be up to the client to save the block elsewhere immediately
+}
+
+CVSTHOST_API void CDECL CVST_SetChunk(CVST_Plugin plugin, enum CVST_ChunkType chunkType, void* source, size_t length)
+{
+    VstInt32 index = chunkType == ChunkType_Bank ? 0 : 1;
+    plugin->dispatcher(effSetChunk, index, length, source, 0.0f);
+}

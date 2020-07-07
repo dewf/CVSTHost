@@ -83,6 +83,13 @@ extern "C" {
     } CVST_Properties;
     CVSTHOST_API void CDECL CVST_GetProperties(CVST_Plugin plugin, CVST_Properties *props);
 
+    enum CVST_ChunkType {
+        ChunkType_Bank,
+        ChunkType_Program
+    };
+    CVSTHOST_API void CDECL CVST_GetChunk(CVST_Plugin plugin, enum CVST_ChunkType chunkType, void** data, size_t* length); // will allocate and copy
+    CVSTHOST_API void CDECL CVST_SetChunk(CVST_Plugin plugin, enum CVST_ChunkType chunkType, void* source, size_t length); // set from memory
+
 #ifdef __cplusplus
 }
 #endif
