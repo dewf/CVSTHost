@@ -399,7 +399,7 @@ int main()
     //vstPlugin = CVST_LoadPlugin("C:\\Program Files\\Steinberg\\VSTPlugins\\dexed.dll", nullptr);
     vstPlugin = CVST_LoadPlugin("C:\\Program Files\\Steinberg\\VSTPlugins\\HALion Sonic\\HALion Sonic.dll", nullptr);
 #else
-    vstPlugin = CVST_LoadPlugin("C:\\Program Files (x86)\\Steinberg\\VSTPlugins\\TyrellN6.dll", nullptr);
+    vstPlugin = CVST_LoadPlugin("C:\\Program Files (x86)\\Steinberg\\VSTPlugins\\syxg50.dll", nullptr);
     //vstPlugin = CVST_LoadPlugin("C:\\Program Files (x86)\\Steinberg\\VSTPlugins\\dexed.dll", nullptr);
 #endif
     CVST_GetProperties(vstPlugin, &vstProps);
