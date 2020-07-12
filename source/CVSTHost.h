@@ -1,3 +1,6 @@
+#ifndef __CVSTHOST_H__
+#define __CVSTHOST_H__
+
 // The following ifdef block is the standard way of creating macros which make exporting 
 // from a DLL simpler. All files within this DLL are compiled with the CVSTHOST_EXPORTS
 // symbol defined on the command line. This symbol should not be defined on any project
@@ -10,7 +13,7 @@
 #define CVSTHOST_API __declspec(dllimport)
 #endif
 
-#include <Windows.h>
+#define CDECL // including Windows.h is a bit overkill just for this
 
 #define APIHANDLE(x) struct _##x; typedef struct _##x* x
 
@@ -93,3 +96,7 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+
+
+
+#endif // __CVSTHOST_H__
