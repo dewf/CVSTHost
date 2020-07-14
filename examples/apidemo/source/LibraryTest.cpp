@@ -54,8 +54,8 @@ static void loadProgram() {
     wl_FileResults* results;
     if (wl_FileOpenDialog(&opts, &results) && results->numResults == 1) {
         printf("user loading from: [%s]\n", results->results[0]);
-        auto file = fopen(results->results[0], "rb");
-        if (file != nullptr) {
+        FILE* file;
+        if (fopen_s(&file, results->results[0], "rb") == 0) {
             // total file size
             fseek(file, 0, SEEK_END);
             auto totalLength = ftell(file);
@@ -98,8 +98,8 @@ static void saveProgram() {
         size_t length;
         CVST_GetChunk(vstPlugin, CVST_ChunkType::ChunkType_Program, &data, &length);
         if (length > 0) {
-            auto file = fopen(results->results[0], "wb");
-            if (file != nullptr) {
+            FILE* file;
+            if (fopen_s(&file, results->results[0], "wb") == 0) {
                 fwrite(&MAGIC, sizeof(MAGIC), 1, file);
                 fwrite(data, 1, length, file);
                 fclose(file);
