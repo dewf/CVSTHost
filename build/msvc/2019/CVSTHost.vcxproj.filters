@@ -27,12 +27,18 @@
     <ClInclude Include="..\..\..\source\CVSTHost.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\source\win32\unicodestuff.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\source\win32\CVSTHost.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\source\win32\unicodestuff.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

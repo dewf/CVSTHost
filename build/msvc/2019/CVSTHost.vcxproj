@@ -153,11 +153,13 @@
   <ItemGroup>
     <ClInclude Include="..\..\..\source\CanDos.h" />
     <ClInclude Include="..\..\..\source\CVSTHost.h" />
+    <ClInclude Include="..\..\..\source\win32\unicodestuff.h" />
     <ClInclude Include="header.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\source\win32\CVSTHost.cpp" />
+    <ClCompile Include="..\..\..\source\win32\unicodestuff.cpp" />
     <ClCompile Include="dllmain.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
