@@ -69,6 +69,7 @@ extern "C" {
     CVSTHOST_API void CDECL CVST_OpenEditor(CVST_Plugin plugin, size_t windowHandle);
     CVSTHOST_API void CDECL CVST_CloseEditor(CVST_Plugin plugin);
     CVSTHOST_API void CDECL CVST_ProcessReplacing(CVST_Plugin plugin, float **inputs, float **outputs, unsigned int sampleFrames);
+    CVSTHOST_API void CDECL CVST_Idle(CVST_Plugin plugin);
 
     typedef struct {
         unsigned long sampleOffs; // relative to start of block -- NOT deltas, that's calculated in CVSTSetBlockEvents

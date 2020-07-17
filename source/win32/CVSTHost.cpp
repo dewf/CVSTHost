@@ -43,6 +43,8 @@ public:
     //   we pre-initialize the .events ptr to always point to the contiguous midi events in the storage above
     MyVSTEvents vstEvents;
 
+    bool wantsIdle = false;
+
     _CVST_Plugin(AEffect *effect) {
         this->effect = effect;
         effect->resvd1 = (VstIntPtr)this;
@@ -164,10 +166,15 @@ VstIntPtr VSTCALLBACK hostCallback(AEffect* effect, VstInt32 opcode, VstInt32 in
     // hence the 'if' filter below ...
     if (plugin) {
         switch (opcode) {
-            // ignore deprecated
-        case __audioMasterWantMidiDeprecated:
+        case audioMasterIdle:
+            // not sure what to do here ...
+            // discussion https://www.kvraudio.com/forum/viewtopic.php?t=349866
             break;
-            // regular
+        case __audioMasterWantMidiDeprecated: // ??
+            break;
+        case __audioMasterNeedIdleDeprecated:
+            plugin->wantsIdle = true; // send effIdle on idle pulse
+            break;
         case audioMasterAutomate:
             //logFormat("automating param %d value %f", index, opt);
             hostEvent.eventType = CVST_EventType_Automation;
@@ -199,7 +206,9 @@ VstIntPtr VSTCALLBACK hostCallback(AEffect* effect, VstInt32 opcode, VstInt32 in
         }
         default:
             logFormat("unhandled vst host opcode (with plugin): %d", opcode);
+            return false; // unhandled by default
         }
+        return true; // unless otherwise specified
     }
     else {
         switch (opcode) {
@@ -284,14 +293,16 @@ CVSTHOST_API void CDECL CVST_SetBlockSize(CVST_Plugin plugin, int blockSize)
     plugin->dispatcher(effSetBlockSize, 0, blockSize, NULL, 0.0f);
 }
 
+CVSTHOST_API void CDECL CVST_Suspend(CVST_Plugin plugin)
+{
+    plugin->dispatcher(effStopProcess, 0, 0, NULL, 0.0f);
+    plugin->dispatcher(effMainsChanged, 0, 0, NULL, 0.0f);
+}
+
 CVSTHOST_API void CDECL CVST_Resume(CVST_Plugin plugin)
 {
     plugin->dispatcher(effMainsChanged, 0, 1, NULL, 0.0f);
-}
-
-CVSTHOST_API void CDECL CVST_Suspend(CVST_Plugin plugin)
-{
-    plugin->dispatcher(effMainsChanged, 0, 0, NULL, 0.0f);
+    plugin->dispatcher(effStartProcess, 0, 0, NULL, 0.0f);
 }
 
 CVSTHOST_API void CDECL CVST_GetEditorSize(CVST_Plugin plugin, int *width, int *height)
@@ -323,6 +334,16 @@ CVSTHOST_API void CDECL CVST_ProcessReplacing(CVST_Plugin plugin, float **inputs
 {
     // process audio
     plugin->processReplacing(inputs, outputs, sampleFrames);
+}
+
+CVSTHOST_API void CDECL CVST_Idle(CVST_Plugin plugin)
+{
+    if (plugin->wantsIdle) {
+        plugin->dispatcher(__effIdleDeprecated, 0, 0, NULL, 0.0f);
+    }
+    if (plugin->editorOpen) {
+        plugin->dispatcher(effEditIdle, 0, 0, NULL, 0.0f);
+    }
 }
 
 CVSTHOST_API void CDECL CVST_SetBlockEvents(CVST_Plugin plugin, CVST_MidiEvent *events, int numEvents)

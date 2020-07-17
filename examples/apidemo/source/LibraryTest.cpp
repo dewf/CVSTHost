@@ -20,6 +20,7 @@ enum ActionIDs {
 };
 
 static wl_WindowRef editorWindow = nullptr;
+static wl_TimerRef idleTimer = nullptr;
 static CASIO_Device asioDevice = nullptr;
 static CASIO_DeviceProperties asioProps;
 static double sampleRate;
@@ -116,6 +117,11 @@ int CDECL wlCallback(wl_WindowRef window, struct wl_Event *event, void *userData
 {
     event->handled = true;
     switch (event->eventType) {
+    case wl_EventType::wl_kEventTypeTimer:
+        if (event->timerEvent.timer == idleTimer) {
+            CVST_Idle(vstPlugin);
+        }
+        break;
     case wl_EventType::wl_kEventTypeWindowDestroyed:
         if (window == editorWindow) {
             wl_ExitRunloop();
@@ -400,12 +406,16 @@ int main()
     vstPlugin = CVST_LoadPlugin("C:\\Program Files\\Steinberg\\VSTPlugins\\HALion Sonic\\HALion Sonic.dll", nullptr);
 #else
     vstPlugin = CVST_LoadPlugin("C:\\Program Files (x86)\\Steinberg\\VSTPlugins\\syxg50.dll", nullptr);
+    //vstPlugin = CVST_LoadPlugin("C:\\Program Files (x86)\\Steinberg\\VSTPlugins\\Hypersonic\\Hypersonic.dll", nullptr);
     //vstPlugin = CVST_LoadPlugin("C:\\Program Files (x86)\\Steinberg\\VSTPlugins\\dexed.dll", nullptr);
 #endif
     CVST_GetProperties(vstPlugin, &vstProps);
+    CVST_Start(vstPlugin, sampleRate);
     CVST_SetBlockSize(vstPlugin, asioProps.bufferSampleLength);
 
     allocBuffers();
+
+    CVST_Resume(vstPlugin);
 
     // open editor window
     int width, height;
@@ -418,6 +428,9 @@ int main()
     wl_WindowShow(editorWindow);
     CVST_OpenEditor(vstPlugin, wl_WindowGetOSHandle(editorWindow));
 
+    // start idle timer for UI etc
+    idleTimer = wl_TimerCreate(1000 / 20, nullptr); // 20x a second
+ 
     // start playback
     CWin32Midi_Start(midiDevice);
     CASIO_Start(asioDevice);
@@ -425,11 +438,15 @@ int main()
     // run until editor window closed
     wl_Runloop(); 
 
+    // shut down timer
+    wl_TimerDestroy(idleTimer);
+
     // stop playback
     CASIO_Stop(asioDevice);
     CWin32Midi_Stop(midiDevice);
 
     // unload plugin
+    CVST_Suspend(vstPlugin);
     CVST_Destroy(vstPlugin);
 
     // close MIDI
